@@ -1,8 +1,8 @@
 package otto
 
 import (
-	"fmt"
 	"sort"
+	"strconv"
 	"testing"
 )
 
@@ -17,7 +17,7 @@ func (s GoMapTest) Join() string {
 	// All of this is meant to ensure that the test is predictable.
 	keys := make([]string, len(s))
 	i := 0
-	for key, _ := range s {
+	for key := range s {
 		keys[i] = key
 		i++
 	}
@@ -25,7 +25,7 @@ func (s GoMapTest) Join() string {
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		joinedStr += key + ": " + fmt.Sprintf("%d", s[key]) + " "
+		joinedStr += key + ": " + strconv.Itoa(s[key]) + " "
 	}
 	return joinedStr
 }

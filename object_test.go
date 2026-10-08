@@ -8,11 +8,11 @@ func TestObject_(t *testing.T) {
 	tt(t, func() {
 		test, _ := test()
 
-		object := newObject(nil, "")
-		is(object != nil, true)
+		obj := newObject(nil, "")
+		is(obj != nil, true)
 
-		object.put("xyzzy", toValue("Nothing happens."), true)
-		is(object.get("xyzzy"), "Nothing happens.")
+		obj.put("xyzzy", toValue("Nothing happens."), true)
+		is(obj.get("xyzzy"), "Nothing happens.")
 
 		test(`
             var abc = Object.getOwnPropertyDescriptor(Object, "prototype");
@@ -24,10 +24,10 @@ func TestObject_(t *testing.T) {
 
 func TestStringObject(t *testing.T) {
 	tt(t, func() {
-		object := New().runtime.newStringObject(toValue("xyzzy"))
-		is(object.get("1"), "y")
-		is(object.get("10"), "undefined")
-		is(object.get("2"), "z")
+		obj := New().runtime.newStringObject(toValue("xyzzy"))
+		is(obj.get("1"), "y")
+		is(obj.get("10"), "undefined")
+		is(obj.get("2"), "z")
 	})
 }
 
@@ -63,7 +63,7 @@ func TestObject_create(t *testing.T) {
 	tt(t, func() {
 		test, _ := test()
 
-		test(`raise: Object.create()`, "TypeError")
+		test(`raise: Object.create()`, "TypeError: Object.Create is nil")
 
 		test(`
             var abc = Object.create(null)
@@ -121,7 +121,7 @@ func TestObject_isExtensible(t *testing.T) {
 
 		test(`raise:
             Object.isExtensible();
-        `, "TypeError")
+        `, "TypeError: Object.IsExtensible is nil")
 
 		// FIXME terst, Why raise?
 		test(`raise:
@@ -139,7 +139,7 @@ func TestObject_preventExtensions(t *testing.T) {
 
 		test(`raise:
             Object.preventExtensions()
-        `, "TypeError")
+        `, "TypeError: Object.PreventExtensions is nil")
 
 		test(`raise:
             var abc = { def: true };
@@ -178,7 +178,7 @@ func TestObject_seal(t *testing.T) {
 	tt(t, func() {
 		test, _ := test()
 
-		test(`raise: Object.seal()`, "TypeError")
+		test(`raise: Object.seal()`, "TypeError: Object.Seal is nil")
 
 		test(`
             var abc = {a:1,b:1,c:3};
@@ -211,7 +211,7 @@ func TestObject_isFrozen(t *testing.T) {
 	tt(t, func() {
 		test, _ := test()
 
-		test(`raise: Object.isFrozen()`, "TypeError")
+		test(`raise: Object.isFrozen()`, "TypeError: Object.IsFrozen is nil")
 		test(`Object.isFrozen(Object.preventExtensions({a:1}))`, false)
 		test(`Object.isFrozen({})`, false)
 
@@ -235,7 +235,7 @@ func TestObject_freeze(t *testing.T) {
 	tt(t, func() {
 		test, _ := test()
 
-		test(`raise: Object.freeze()`, "TypeError")
+		test(`raise: Object.freeze()`, "TypeError: Object.Freeze is nil")
 
 		test(`
             var abc = {a:1,b:2,c:3};
@@ -310,6 +310,51 @@ func TestObject_defineProperty(t *testing.T) {
 	})
 }
 
+func TestObject_assign(t *testing.T) {
+	tt(t, func() {
+		test, _ := test()
+
+		// Test 1: Assigning two empty objects should return an empty object.
+		test(`JSON.stringify(Object.assign({}, {}))`, "{}")
+
+		// Test 2: Single source assignment.
+		test(`JSON.stringify(Object.assign({}, {a: 1}))`, "{\"a\":1}")
+
+		// Test 3: Multiple sources with later properties overriding earlier ones.
+		test(`JSON.stringify(Object.assign({a: 1, c: 5}, {a: 2}, {b: 3}))`, "{\"a\":2,\"b\":3,\"c\":5}")
+
+		// Test 4: Merging objects with overlapping keys.
+		test(`JSON.stringify(Object.assign({a: 1, b: 2}, {b: 3, c: 4}))`, "{\"a\":1,\"b\":3,\"c\":4}")
+
+		// Test 5: Sources that are null or undefined should be ignored.
+		test(`JSON.stringify(Object.assign({a: 1}, null, undefined, {b: 2}))`, "{\"a\":1,\"b\":2}")
+
+		// Test 6: When a string is used as a source, its characters are assigned as indexed properties.
+		test(`JSON.stringify(Object.assign({}, "abc"))`, "{\"0\":\"a\",\"1\":\"b\",\"2\":\"c\"}")
+
+		// // Test 7: The return value should be the target object.
+		test(`(function(){ var o = {x:1}; var r = Object.assign(o, {y:2}); return (o === r).toString(); })()`, "true")
+
+		// Test 8: Non-enumerable properties should not be copied.
+		test(`(function(){
+            var target = {};
+            var source = {};
+            Object.defineProperty(source, "hidden", { value: 42, enumerable: false });
+            Object.assign(target, source);
+            return target.hasOwnProperty("hidden").toString();
+		})()`, "false")
+
+		// Test 9: Using a number as a source should not add any properties.
+		test(`JSON.stringify(Object.assign({}, 123))`, "{}")
+
+		// Test 10: Using a boolean as a source should not add any properties.
+		test(`JSON.stringify(Object.assign({}, true))`, "{}")
+
+		// Test 11: Arrays are objects, so their indexed elements are copied.
+		test(`JSON.stringify(Object.assign({}, [1,2,3]))`, "{\"0\":1,\"1\":2,\"2\":3}")
+	})
+}
+
 func TestObject_keys(t *testing.T) {
 	tt(t, func() {
 		test, _ := test()
@@ -360,6 +405,40 @@ func TestObject_keys(t *testing.T) {
 	})
 }
 
+func TestObject_values(t *testing.T) {
+	tt(t, func() {
+		test, _ := test()
+
+		test(`Object.values({ abc:"first_example", def:"second_example" })`, "first_example,second_example")
+
+		test(`
+			function abc() {
+				this.abc = "first_example";
+				this.def = "second_example";
+			}
+			Object.values(new abc())
+		`, "first_example,second_example")
+
+		test(`
+			function def() {
+				this.ghi = "third_example"
+			}
+			def.prototype = new abc();
+			Object.values(new def());
+		`, "third_example")
+
+		test(`
+			var arr = [1, 2, 3];
+			Object.values(arr);
+		`, "1,2,3")
+
+		test(`
+			var arr = [{"abc": "first_example"}, {"def": "second_example"}];
+			Object.values(arr);
+		`, "[object Object],[object Object]")
+	})
+}
+
 func TestObject_getOwnPropertyNames(t *testing.T) {
 	tt(t, func() {
 		test, _ := test()
@@ -395,7 +474,7 @@ func TestObjectGetterSetter(t *testing.T) {
                     writable: true
                 }
             }).abc;
-        `, "TypeError")
+        `, "TypeError: toPropertyDescriptor descriptor writeSet")
 
 		test(`raise:
             Object.create({}, {
@@ -406,7 +485,7 @@ func TestObjectGetterSetter(t *testing.T) {
                     writable: false
                 }
             }).abc;
-        `, "TypeError")
+        `, "TypeError: toPropertyDescriptor descriptor writeSet")
 
 		test(`
             Object.create({}, {
@@ -512,7 +591,7 @@ func TestObjectGetterSetter(t *testing.T) {
                     return 2;
                 }
             });
-        `, "TypeError")
+        `, `TypeError: Array.DefineOwnProperty ["function () {\n                    return 2;\n                }" <nil>] is not a value`)
 
 		test(`
             var abc = {};
@@ -623,17 +702,17 @@ func TestObjectGetterSetter(t *testing.T) {
 
 func TestProperty(t *testing.T) {
 	tt(t, func() {
-		property := _property{}
-		property.writeOn()
-		is(property.writeSet(), true)
+		prop := property{}
+		prop.writeOn()
+		is(prop.writeSet(), true)
 
-		property.writeClear()
-		is(property.writeSet(), false)
+		prop.writeClear()
+		is(prop.writeSet(), false)
 
-		property.writeOff()
-		is(property.writeSet(), true)
+		prop.writeOff()
+		is(prop.writeSet(), true)
 
-		property.writeClear()
-		is(property.writeSet(), false)
+		prop.writeClear()
+		is(prop.writeSet(), false)
 	})
 }

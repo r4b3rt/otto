@@ -8,13 +8,15 @@ import (
 	"github.com/robertkrimen/otto/token"
 )
 
-var tt = terst.Terst
-var is = terst.Is
+var (
+	tt = terst.Terst
+	is = terst.Is
+)
 
 func TestLexer(t *testing.T) {
 	tt(t, func() {
-		setup := func(src string) *_parser {
-			parser := _newParser("", src, 1, nil)
+		setup := func(src string) *parser {
+			parser := newParser("", src, 1, nil)
 			return parser
 		}
 
@@ -349,6 +351,21 @@ Second line \
 			token.RIGHT_BRACKET, "", 6,
 		)
 
+		// Identifier from Unicode Nl
+		test("\u16ee",
+			token.IDENTIFIER, "ᛮ", 1,
+		)
+
+		// Identifier from Unicode Other_ID_Start
+		test("\u212e",
+			token.IDENTIFIER, "℮", 1,
+		)
+
+		// Using char from ID_Continue after valid start char
+		test("a\u0300",
+			token.IDENTIFIER, "à", 1,
+		)
+
 		// ILLEGAL
 
 		test(`3ea`,
@@ -382,5 +399,14 @@ Second line \
 			token.EOF, "", 7,
 		)
 
+		// Starting identifier with ID_Continue char from Nm
+		test("\u0300",
+			token.ILLEGAL,
+		)
+
+		// Starting identifier with Pattern_Syntax
+		test("'",
+			token.ILLEGAL,
+		)
 	})
 }
